@@ -1,0 +1,40 @@
+{
+  "name": "syntropic",
+  "version": "0.5.1",
+  "description": "Philosophy-as-code development pipeline for Claude Code, Cursor, Windsurf, GitHub Copilot, and OpenAI Codex.",
+  "bin": {
+    "syntropic": "./bin/syntropic.js"
+  },
+  "keywords": [
+    "cli",
+    "development-pipeline",
+    "philosophy-as-code",
+    "outcome-thinking",
+    "claude-code",
+    "cursor",
+    "windsurf",
+    "github-copilot",
+    "openai-codex",
+    "agents-md",
+    "skill-md",
+    "ai-development",
+    "dev-pipeline",
+    "syntropic"
+  ],
+  "author": "Syntropic Works <hello@syntropicworks.com>",
+  "license": "MIT",
+  "homepage": "https://www.syntropicworks.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/petercholford-ship-it/syntropic-cli"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin/",
+    "commands/",
+    "templates/"
+  ],
+  "dependencies": {}
+}

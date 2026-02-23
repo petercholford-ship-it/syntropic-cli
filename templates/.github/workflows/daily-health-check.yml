@@ -1,0 +1,84 @@
+name: Daily Health Check
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run health check
+        id: health
+        continue-on-error: true
+        run: node scripts/health-check.js
+
+      - name: npm audit check
+        id: audit
+        run: |
+          npm audit fix --force 2>&1 || true
+          if git diff --quiet package.json package-lock.json; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create audit fix PR
+        if: steps.audit.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = `auto/npm-audit-fix-${new Date().toISOString().split('T')[0]}`;
+            const { execSync } = require('child_process');
+            execSync(`git checkout -b ${branch}`);
+            execSync('git add package.json package-lock.json');
+            execSync(`git commit -m "fix: auto npm audit fix (${new Date().toISOString().split('T')[0]})"`);
+            execSync(`git push origin ${branch}`);
+            await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Auto: npm audit fix (${new Date().toISOString().split('T')[0]})`,
+              body: 'Automated npm audit fix from daily health check.\n\nReview changes before merging.',
+              head: branch,
+              base: 'main',
+            });
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'health-check',
+            });
+            if (issues.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Daily Health Check Failed',
+                body: `Health check failed on ${new Date().toISOString()}.\n\n**Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+                labels: ['health-check', 'automated'],
+              });
+            }
